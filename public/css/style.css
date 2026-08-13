@@ -1,0 +1,751 @@
+/* public/css/style.css */
+/* Sistema de diseño moderno para DETECCION-SISMO - Interfaz flotante con alto contraste */
+
+:root {
+  --bg: #0b0f19;
+  --surface: #131b2e;
+  --surface2: #1a243d;
+  --surface-hover: #222f4f;
+  --border: #233152;
+  --border-focus: #3b82f6;
+  
+  --accent: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.3);
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --shallow: #ef4444; /* < 30 km */
+  --intermediate: #f59e0b; /* 30 - 70 km */
+  --deep: #10b981; /* > 70 km */
+  
+  --sgc-color: #10b981;
+  --usgs-color: #3b82f6;
+  --emsc-color: #f97316;
+  --multi-color: #a855f7;
+
+  --fuente: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fuente-mono: "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+  
+  --aire: 10px;
+  --curva: 12px;
+  --sombra: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--fuente);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--aire);
+  gap: var(--aire);
+}
+
+/* ── Paneles Flotantes ─────────────────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--curva);
+  box-shadow: var(--sombra);
+  backdrop-filter: blur(12px);
+  position: relative;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+header {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #ef4444, #3b82f6);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+}
+
+.logo-text h1 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #ffffff, #93c5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.logo-text p {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+/* Badges de estado en el header */
+.header-stats {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  align-items: center;
+}
+
+.stat-pill {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-family: var(--fuente-mono);
+  color: var(--text-muted);
+}
+
+.stat-pill strong {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.live-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-live 1.5s infinite;
+}
+
+@keyframes pulse-live {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 12px #10b981; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-outline:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-focus);
+}
+
+.btn-danger {
+  background: #ef4444;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+/* ── Layout Principal ──────────────────────────────────────────────────── */
+.main-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: var(--aire);
+  position: relative;
+}
+
+/* ── Sidebar Izquierdo: Feed & Controles ───────────────────────────────── */
+.sidebar {
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+.sidebar-section {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Filtros */
+.filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-group label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.filter-group select,
+.filter-group input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 5px 8px;
+  font-size: 0.75rem;
+  outline: none;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+  border-color: var(--border-focus);
+}
+
+/* Fuentes Activas Pills */
+.sources-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.source-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+}
+
+.source-sgc { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+.source-usgs { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+.source-emsc { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+.source-multi { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+.source-sim { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+/* Feed de Sismos en Vivo */
+.feed-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feed-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  gap: 10px;
+  position: relative;
+}
+
+.feed-item:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-focus);
+  transform: translateX(2px);
+}
+
+.feed-item.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+  background: #192748;
+}
+
+.feed-item.recent {
+  border-left: 4px solid #ef4444;
+}
+
+/* Skeleton Loading */
+.skeleton-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.5; }
+}
+
+.skeleton-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #233152;
+  flex-shrink: 0;
+}
+
+.skeleton-text {
+  height: 10px;
+  background: #233152;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.mag-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-family: var(--fuente-mono);
+  color: #fff;
+  flex-shrink: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.feed-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.feed-place {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-meta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feed-depth {
+  font-weight: 600;
+}
+
+.feed-time {
+  font-family: var(--fuente-mono);
+  color: var(--text-dim);
+}
+
+.feed-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+/* ── Contenedor del Mapa ───────────────────────────────────────────────── */
+.map-wrapper {
+  flex: 1;
+  position: relative;
+  border-radius: var(--curva);
+  overflow: hidden;
+  box-shadow: var(--sombra);
+  border: 1px solid var(--border);
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  background: #080c14;
+}
+
+/* ── Capas y Controles Flotantes Sobre el Mapa ─────────────────────────── */
+.map-overlay-top-right {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-control-card {
+  background: rgba(19, 27, 46, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text);
+}
+
+.layer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.layer-toggle input {
+  cursor: pointer;
+}
+
+/* Leyenda de Profundidad */
+.depth-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+}
+
+.legend-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* ── Panel de Simulación de Ondas Sísmicas P y S (ETA) ─────────────────── */
+.wave-eta-panel {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 1000;
+  width: 320px;
+  background: rgba(19, 27, 46, 0.94);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: var(--sombra);
+  display: none; /* Visible cuando hay un sismo activo/seleccionado */
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wave-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.wave-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #60a5fa;
+}
+
+.wave-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.wave-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.wave-stat-box {
+  background: var(--surface2);
+  border-radius: 6px;
+  padding: 6px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+
+.wave-stat-box .val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-family: var(--fuente-mono);
+}
+
+.wave-stat-box .lbl {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+.wave-cities-table {
+  width: 100%;
+  font-size: 0.68rem;
+  border-collapse: collapse;
+}
+
+.wave-cities-table th {
+  text-align: left;
+  color: var(--text-dim);
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wave-cities-table td {
+  padding: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.wave-arrived {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.wave-approaching {
+  color: #fbbf24;
+  font-family: var(--fuente-mono);
+  font-weight: 700;
+}
+
+/* ── Modal de Simulación ───────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  width: 440px;
+  max-width: 90vw;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--curva);
+  padding: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.modal-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.form-group {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.form-group input,
+.form-group select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 0.8rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* ── Animaciones de Ondas en Leaflet ───────────────────────────────────── */
+.leaflet-container {
+  background: #0b0f19 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #131b2e !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #233152 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+.leaflet-popup-tip {
+  background: #131b2e !important;
+  border: 1px solid #233152 !important;
+}
+
+.seismic-popup {
+  padding: 4px;
+  font-family: var(--fuente);
+}
+
+.seismic-popup h4 {
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  color: #60a5fa;
+}
+
+.seismic-popup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: 0.72rem;
+  margin-bottom: 8px;
+}
+
+.seismic-popup-item strong {
+  color: var(--text-muted);
+  display: block;
+  font-size: 0.65rem;
+}
+
+.seismic-popup-btn {
+  width: 100%;
+  padding: 6px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seismic-popup-btn:hover {
+  background: #1d4ed8;
+}
+
+/* Pulso animado para el epicentro reciente */
+.recent-epicenter-pulse {
+  border-radius: 50%;
+  animation: epicenterPulse 1.8s infinite;
+}
+
+@keyframes epicenterPulse {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-focus);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  body {
+    padding: 6px;
+    gap: 6px;
+  }
+  .main-container {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    height: 40vh;
+  }
+  .map-wrapper {
+    height: 55vh;
+  }
+  .wave-eta-panel {
+    width: calc(100% - 28px);
+  }
+}

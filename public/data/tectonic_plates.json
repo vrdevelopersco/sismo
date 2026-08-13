@@ -1,0 +1,85 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Fosa Colombo-Ecuatoriana (Zona de Subducción Nazca - Suramérica)" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-81.5, 7.5], [-80.5, 5.0], [-79.8, 3.0], [-79.5, 1.5], [-80.2, -0.5], [-81.0, -2.5], [-81.8, -5.0]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Límite Placa del Caribe - Placa Suramericana" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-77.5, 9.5], [-76.0, 10.2], [-74.5, 11.5], [-73.0, 12.0], [-71.5, 12.2], [-69.5, 11.8], [-66.0, 11.0], [-62.0, 10.8]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Límite Placa de Cocos - Placa de Nazca (Zona de Fractura de Panamá)" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-85.0, 5.0], [-83.0, 4.5], [-81.0, 3.5], [-78.5, 2.0]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Fosa Mesoamericana (Cocos - Norteamérica/Caribe)" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-105.0, 18.0], [-100.0, 15.5], [-95.0, 14.0], [-90.0, 12.5], [-85.0, 9.0], [-83.0, 8.0]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Fosa de Perú-Chile (Zona de Subducción Nazca - Suramérica)" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-81.8, -5.0], [-81.0, -9.0], [-78.0, -13.0], [-75.0, -16.0], [-71.5, -20.0], [-71.0, -26.0], [-72.0, -33.0], [-74.0, -40.0], [-75.5, -46.0]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Dorsal Mesoatlántica" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-30.0, 60.0], [-35.0, 45.0], [-42.0, 30.0], [-45.0, 15.0], [-35.0, 0.0], [-20.0, -15.0], [-15.0, -30.0], [-18.0, -45.0]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Cinturón de Fuego del Pacífico (Oeste)" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [145.0, 45.0], [140.0, 35.0], [130.0, 25.0], [125.0, 15.0], [122.0, 5.0], [128.0, -5.0], [145.0, -10.0], [175.0, -20.0], [178.0, -38.0]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Falla de San Andrés (Transformante Pacífico - Norteamérica)" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-124.5, 40.2], [-122.5, 37.8], [-120.0, 35.5], [-117.5, 34.0], [-115.5, 32.0]
+        ]
+      }
+    }
+  ]
+}

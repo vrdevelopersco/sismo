@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DETECCION-SISMO — Monitoreo Sísmico en Tiempo Real (SGC • USGS • EMSC)</title>
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Socket.io -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Estilos del Sistema -->
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- Cabecera Flotante -->
+  <header class="panel">
+    <div class="logo-container">
+      <div class="logo-icon">🌍</div>
+      <div class="logo-text">
+        <h1>DETECCION-SISMO</h1>
+        <p>Centro de Alerta y Monitoreo Sísmico Multifuente en Tiempo Real</p>
+      </div>
+    </div>
+
+    <div class="header-stats">
+      <div class="stat-pill" title="Sismos registrados en las últimas 24h a nivel global">
+        <span>Global 24h:</span>
+        <strong id="stat-total-24h">0</strong>
+      </div>
+      <div class="stat-pill" title="Sismos registrados en Colombia en las últimas 24h">
+        <span>🇨🇴 Colombia:</span>
+        <strong id="stat-colombia-24h" style="color: #34d399;">0</strong>
+      </div>
+      <div class="stat-pill" title="Mayor magnitud registrada hoy">
+        <span>Más Fuerte:</span>
+        <strong id="stat-strongest" style="color: #f87171;">—</strong>
+      </div>
+      <div class="stat-pill" title="Eventos confirmados por más de una red sísmica">
+        <span>Multifuente:</span>
+        <strong id="stat-multisource" style="color: #c084fc;">0</strong>
+      </div>
+      <div class="stat-pill" title="Estado de la conexión en vivo">
+        <div id="live-status-dot" class="live-indicator"></div>
+        <span style="color: #10b981; font-weight:700;">EN VIVO</span>
+      </div>
+
+      <button id="btn-sound-toggle" class="btn btn-outline" title="Activar/Desactivar sintetizador de alerta acústica">
+        🔊 Sonido: ON
+      </button>
+
+      <button id="btn-notif-toggle" class="btn btn-outline" title="Activar notificaciones nativas de Windows/Navegador">
+        🔔 Notificaciones
+      </button>
+
+      <button id="btn-refresh" class="btn btn-outline" title="Forzar sincronización inmediata con las 3 redes">
+        🔄 Actualizar
+      </button>
+
+      <button id="btn-settings" class="btn btn-outline" title="Configurar tiempos de polling y redes">
+        ⚙️ Ajustes
+      </button>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal Flotante -->
+  <div class="main-container">
+
+    <!-- Barra Lateral: Filtros, Fuentes, Base de Datos y Feed -->
+    <aside class="panel sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">
+          <span>Filtros y Cobertura</span>
+        </div>
+        <div class="filter-row">
+          <div class="filter-group">
+            <label for="filter-country">Región</label>
+            <select id="filter-country">
+              <option value="colombia" selected>🇨🇴 Colombia</option>
+              <option value="all">🌐 Global</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-min-mag">Magnitud Mín.</label>
+            <select id="filter-min-mag">
+              <option value="0">Todas (M 0.0+)</option>
+              <option value="2.0">M 2.0+</option>
+              <option value="3.0">M 3.0+</option>
+              <option value="4.0">M 4.0+</option>
+              <option value="5.0">M 5.0+</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <div class="filter-group">
+            <label for="filter-source">Red Sísmica</label>
+            <select id="filter-source">
+              <option value="all">Todas las redes</option>
+              <option value="sgc">SGC (Colombia)</option>
+              <option value="usgs">USGS (EE.UU.)</option>
+              <option value="emsc">EMSC (Europa)</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-hours">Ventana de Tiempo</label>
+            <select id="filter-hours">
+              <option value="6">Últimas 6 horas</option>
+              <option value="24">Últimas 24 horas</option>
+              <option value="48" selected>Últimas 48 horas</option>
+              <option value="168">Últimos 7 días</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección de Fuentes Activas -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">
+          <span>Redes Sismológicas Conectadas</span>
+        </div>
+        <div class="sources-list">
+          <span class="source-badge source-sgc" title="Servicio Geológico Colombiano">🇨🇴 SGC Colombia</span>
+          <span class="source-badge source-usgs" title="US Geological Survey">🌐 USGS</span>
+          <span class="source-badge source-emsc" title="Euro-Med Seismological Centre">⚡ EMSC Live WS</span>
+          <span class="source-badge source-multi" title="Correlación automática">✨ Multifuente</span>
+        </div>
+      </div>
+
+      <!-- Sección de Almacenamiento Persistente en Base de Datos -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">
+          <span>💾 Base de Datos en Vivo (24/7)</span>
+          <span id="db-total-records" style="font-family: var(--fuente-mono); color: #34d399; font-weight: bold;">...</span>
+        </div>
+        <div style="font-size: 0.68rem; color: var(--text-muted); margin-bottom: 8px;">
+          Recolección continua en <code style="color:#60a5fa;">data/sismos.db</code>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <a href="/api/export/csv" download="sismos_historico.csv" class="btn btn-outline" style="flex: 1; text-decoration: none; justify-content: center; font-size: 0.7rem; padding: 4px 6px;">
+            📥 Exportar CSV
+          </a>
+          <a href="/api/export/json" download="sismos_historico.json" class="btn btn-outline" style="flex: 1; text-decoration: none; justify-content: center; font-size: 0.7rem; padding: 4px 6px;">
+            📥 Exportar JSON
+          </a>
+        </div>
+      </div>
+
+      <!-- Feed en Vivo -->
+      <div class="sidebar-section" style="padding-bottom: 6px; border-bottom: none;">
+        <div class="sidebar-title">
+          <span>Actividad Reciente</span>
+          <span id="feed-count" style="font-family: var(--fuente-mono); font-weight: normal;">Cargando...</span>
+        </div>
+      </div>
+
+      <div id="sismo-feed" class="feed-container">
+        <!-- Skeleton Loaders mientras carga el feed -->
+        <div class="skeleton-card">
+          <div class="skeleton-box"></div>
+          <div style="flex:1;">
+            <div class="skeleton-text" style="width:75%;"></div>
+            <div class="skeleton-text" style="width:50%;"></div>
+          </div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-box"></div>
+          <div style="flex:1;">
+            <div class="skeleton-text" style="width:85%;"></div>
+            <div class="skeleton-text" style="width:40%;"></div>
+          </div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-box"></div>
+          <div style="flex:1;">
+            <div class="skeleton-text" style="width:65%;"></div>
+            <div class="skeleton-text" style="width:45%;"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Lienzo del Mapa -->
+    <main class="panel map-wrapper">
+      <div id="map"></div>
+
+      <!-- Controles Superiores Flotantes sobre el Mapa -->
+      <div class="map-overlay-top-right">
+        <!-- Control de Capas Geológicas -->
+        <div class="map-control-card">
+          <label class="layer-toggle">
+            <input type="checkbox" id="layer-faults" checked />
+            <span>Fallas Activas (Colombia)</span>
+          </label>
+          <label class="layer-toggle">
+            <input type="checkbox" id="layer-plates" checked />
+            <span>Placas Tectónicas Globales</span>
+          </label>
+        </div>
+
+        <!-- Selector de Tema del Mapa -->
+        <div class="map-control-card">
+          <div class="filter-group">
+            <label for="map-theme">Estilo de Mapa</label>
+            <select id="map-theme">
+              <option value="dark" selected>🌙 Oscuro (Contraste)</option>
+              <option value="satellite">🛰️ Satélite (Esri)</option>
+              <option value="light">☀️ Claro (Positron)</option>
+              <option value="osm">🗺️ OpenStreetMap (Calles)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Leyenda de Profundidad Hipocentral -->
+        <div class="map-control-card">
+          <strong style="font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase;">Profundidad</strong>
+          <div class="depth-legend">
+            <div class="legend-item">
+              <div class="legend-color" style="background: var(--shallow);"></div>
+              <span>Superficial (&lt; 30 km)</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: var(--intermediate);"></div>
+              <span>Intermedio (30 - 70 km)</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: var(--deep);"></div>
+              <span>Profundo (&gt; 70 km)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel Flotante de Estimación de Daño, Impacto y Ondas P y S -->
+      <div id="wave-eta-panel" class="wave-eta-panel" style="width: 360px;">
+        <div class="wave-header">
+          <div class="wave-title">
+            <span>📍 Área de Daño, Impacto y Ondas P/S</span>
+          </div>
+          <button id="btn-close-wave" class="wave-close" title="Cerrar panel">&times;</button>
+        </div>
+
+        <p id="wave-epicenter-title" style="font-size: 0.76rem; font-weight: 700; color: #fff; margin-bottom: 4px;">
+          Sismo Seleccionado
+        </p>
+
+        <!-- Consenso de Redes -->
+        <div style="margin-bottom: 8px;">
+          <div style="font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 3px; font-weight: 700;">Consenso Multifuente</div>
+          <div id="wave-consensus-badges" style="display: flex; gap: 4px; flex-wrap: wrap;"></div>
+        </div>
+
+        <!-- Radios de Afectación Física y Daño -->
+        <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 8px;">
+          <div style="font-size: 0.62rem; color: #60a5fa; text-transform: uppercase; font-weight: 700; margin-bottom: 6px;">
+            Áreas de Afectación Estimada
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.68rem;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #94a3b8;">🔴 Radio de Daño Estructural:</span>
+              <span id="impact-damage-val">—</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #94a3b8;">🟠 Radio Sacudida Fuerte:</span>
+              <span id="impact-strong-val">—</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #94a3b8;">🟡 Radio Perceptible Total:</span>
+              <span id="impact-felt-val">—</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #94a3b8;">⚡ Aceleración Epicentral (PGA):</span>
+              <span id="impact-pga-val" style="color:#f59e0b; font-weight:700;">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Frentes de Onda en Tiempo Real -->
+        <div class="wave-stats-row" style="margin-bottom: 8px;">
+          <div class="wave-stat-box">
+            <div class="val" id="wave-p-dist" style="color: #38bdf8;">0 km</div>
+            <div class="lbl">Frente Onda P (6.0 km/s)</div>
+          </div>
+          <div class="wave-stat-box">
+            <div class="val" id="wave-s-dist" style="color: #ef4444;">0 km</div>
+            <div class="lbl">Frente Onda S (3.5 km/s)</div>
+          </div>
+        </div>
+
+        <!-- Tabla ETA Ciudades -->
+        <table class="wave-cities-table">
+          <thead>
+            <tr>
+              <th>Ciudad</th>
+              <th>Distancia</th>
+              <th>Llegada Onda S (ETA)</th>
+            </tr>
+          </thead>
+          <tbody id="wave-cities-tbody">
+            <!-- Filas dinámicas -->
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Modal de Configuración de Ingestión -->
+  <div id="settings-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>⚙️ Configuración de Ingestión y Polling</h3>
+        <button id="btn-close-settings" class="wave-close">&times;</button>
+      </div>
+
+      <form id="form-settings">
+        <div class="form-group">
+          <label for="setting-sgc-interval">Frecuencia de Consulta SGC (Colombia):</label>
+          <select id="setting-sgc-interval">
+            <option value="15">Cada 15 segundos (Tiempo Real Rápido)</option>
+            <option value="30" selected>Cada 30 segundos (Recomendado)</option>
+            <option value="60">Cada 1 minuto</option>
+            <option value="120">Cada 2 minutos</option>
+            <option value="300">Cada 5 minutos (Ahorro)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="setting-usgs-interval">Frecuencia de Consulta USGS (Global):</label>
+          <select id="setting-usgs-interval">
+            <option value="15">Cada 15 segundos</option>
+            <option value="30" selected>Cada 30 segundos (Recomendado)</option>
+            <option value="60">Cada 1 minuto</option>
+            <option value="120">Cada 2 minutos</option>
+            <option value="300">Cada 5 minutos</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="setting-min-sound">Umbral de Sonido Mínimo:</label>
+          <select id="setting-min-sound">
+            <option value="0">Cualquier sismo (M ≥ 0.0)</option>
+            <option value="2.5">Sismos perceptibles (M ≥ 2.5)</option>
+            <option value="3.5" selected>Sismos moderados (M ≥ 3.5)</option>
+            <option value="4.5">Sismos fuertes (M ≥ 4.5)</option>
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-cancel-settings" class="btn btn-outline">Cancelar</button>
+          <button type="submit" class="btn" style="background:#10b981;">💾 Guardar Preferencias</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Módulos de la Aplicación -->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
