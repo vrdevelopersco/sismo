@@ -8,6 +8,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import os from 'os';
 
 import { SeismicDatabase } from './services/db.js';
 import { SeismicCorrelator } from './services/correlator.js';
@@ -166,11 +167,24 @@ io.on('connection', (socket) => {
   });
 });
 
-// Arrancar servidor HTTP
-server.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`🌍 DETECCION-SISMO SERVIDOR Y RECOLECTOR EN TIEMPO REAL`);
-  console.log(`📍 Acceso Web: http://localhost:${PORT}`);
-  console.log(`💾 Base de Datos SQLite: data/sismos.db`);
-  console.log(`======================================================\n`);
+// Arrancar servidor HTTP en todas las interfaces de red (0.0.0.0) para acceso LAN (Móvil / Tablet)
+server.listen(PORT, '0.0.0.0', () => {
+  const nets = os.networkInterfaces();
+  const lanIps = [];
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        lanIps.push({ name, address: net.address });
+      }
+    }
+  }
+
+  console.log(`\n================================================================`);
+  console.log(`🌍 DETECCION-SISMO — SERVIDOR Y RECOLECTOR EN TIEMPO REAL`);
+  console.log(`📍 Acceso Local (PC):       http://localhost:${PORT}`);
+  lanIps.forEach(ip => {
+    console.log(`📱 Acceso Móvil / Tablet:  http://${ip.address}:${PORT}  (${ip.name})`);
+  });
+  console.log(`💾 Base de Datos SQLite:    data/sismos.db`);
+  console.log(`================================================================\n`);
 });

@@ -2,8 +2,18 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>DETECCION-SISMO — Monitoreo Sísmico en Tiempo Real (SGC • USGS • EMSC)</title>
+  
+  <!-- PWA Manifest & Meta Tags -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0b0f19" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="DETECCION-SISMO" />
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -25,11 +35,18 @@
   <!-- Cabecera Flotante -->
   <header class="panel">
     <div class="logo-container">
-      <div class="logo-icon">🌍</div>
+      <img src="/icons/icon.svg" alt="DETECCION-SISMO Logo" class="logo-icon-img" />
       <div class="logo-text">
         <h1>DETECCION-SISMO</h1>
         <p>Centro de Alerta y Monitoreo Sísmico Multifuente en Tiempo Real</p>
       </div>
+    </div>
+
+    <!-- Quick info chip on mobile -->
+    <div class="header-mobile-quick">
+      <div id="live-status-dot-m" class="live-indicator"></div>
+      <span id="m-header-strongest" class="m-header-chip">—</span>
+      <button id="btn-sound-toggle-m" class="m-icon-btn" title="Sonido">🔊</button>
     </div>
 
     <div class="header-stats">
@@ -75,8 +92,17 @@
   <!-- Contenedor Principal Flotante -->
   <div class="main-container">
 
-    <!-- Barra Lateral: Filtros, Fuentes, Base de Datos y Feed -->
-    <aside class="panel sidebar">
+    <!-- Barra Lateral / Bottom Sheet en Móvil -->
+    <aside class="panel sidebar" id="app-sidebar">
+      <!-- Barra de arrastre móvil -->
+      <div class="sheet-drag-handle-bar">
+        <div class="sheet-drag-handle"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 4px 8px 8px;">
+          <span style="font-weight: 700; font-size: 0.9rem; color: #fff;">📋 Feed de Actividad Sísmica</span>
+          <button class="sheet-close-btn" id="btn-close-feed-sheet" title="Cerrar">&times;</button>
+        </div>
+      </div>
+
       <div class="sidebar-section">
         <div class="sidebar-title">
           <span>Filtros y Cobertura</span>
@@ -124,7 +150,7 @@
       </div>
 
       <!-- Sección de Fuentes Activas -->
-      <div class="sidebar-section">
+      <div class="sidebar-section desktop-only">
         <div class="sidebar-title">
           <span>Redes Sismológicas Conectadas</span>
         </div>
@@ -137,7 +163,7 @@
       </div>
 
       <!-- Sección de Almacenamiento Persistente en Base de Datos -->
-      <div class="sidebar-section">
+      <div class="sidebar-section desktop-only">
         <div class="sidebar-title">
           <span>💾 Base de Datos en Vivo (24/7)</span>
           <span id="db-total-records" style="font-family: var(--fuente-mono); color: #34d399; font-weight: bold;">...</span>
@@ -220,8 +246,8 @@
           </div>
         </div>
 
-        <!-- Leyenda de Profundidad Hipocentral -->
-        <div class="map-control-card">
+        <!-- Leyenda de Profundidad Hipocentral (Desktop) -->
+        <div class="map-control-card depth-legend-card desktop-only">
           <strong style="font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase;">Profundidad</strong>
           <div class="depth-legend">
             <div class="legend-item">
@@ -241,7 +267,8 @@
       </div>
 
       <!-- Panel Flotante de Estimación de Daño, Impacto y Ondas P y S -->
-      <div id="wave-eta-panel" class="wave-eta-panel" style="width: 360px;">
+      <div id="wave-eta-panel" class="wave-eta-panel">
+        <div class="sheet-drag-handle mobile-only" style="margin: -6px auto 10px;"></div>
         <div class="wave-header">
           <div class="wave-title">
             <span>📍 Área de Daño, Impacto y Ondas P/S</span>
@@ -314,6 +341,81 @@
 
   </div>
 
+  <!-- Modal / Bottom Sheet de Métricas para Móvil -->
+  <div id="stats-sheet-modal" class="modal-backdrop">
+    <div class="modal-card stats-modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.2rem;">📊</span>
+          <h3 style="margin: 0; font-size: 1rem; color: #fff;">Métricas y Estado del Sistema</h3>
+        </div>
+        <button id="btn-close-stats-sheet" class="wave-close">&times;</button>
+      </div>
+      <div class="stats-sheet-body">
+        <div class="stats-grid-mobile">
+          <div class="stat-card-m">
+            <span class="stat-lbl">Global 24h</span>
+            <strong id="m-stat-total" class="stat-val">0</strong>
+          </div>
+          <div class="stat-card-m">
+            <span class="stat-lbl">🇨🇴 Colombia 24h</span>
+            <strong id="m-stat-colombia" class="stat-val" style="color: #34d399;">0</strong>
+          </div>
+          <div class="stat-card-m">
+            <span class="stat-lbl">Más Fuerte</span>
+            <strong id="m-stat-strongest" class="stat-val" style="color: #f87171;">—</strong>
+          </div>
+          <div class="stat-card-m">
+            <span class="stat-lbl">✨ Multifuente</span>
+            <strong id="m-stat-multi" class="stat-val" style="color: #c084fc;">0</strong>
+          </div>
+        </div>
+
+        <!-- Estado de Ingestores -->
+        <div class="m-section-box">
+          <div class="m-box-title">Estado de Redes Sísmicas</div>
+          <div class="m-services-status">
+            <div class="service-row">
+              <span>🇨🇴 SGC (Colombia):</span>
+              <span id="m-status-sgc" class="status-tag status-ok">En Línea</span>
+            </div>
+            <div class="service-row">
+              <span>🌐 USGS (Global):</span>
+              <span id="m-status-usgs" class="status-tag status-ok">En Línea</span>
+            </div>
+            <div class="service-row">
+              <span>⚡ EMSC (WebSocket):</span>
+              <span id="m-status-emsc" class="status-tag status-ok">En Línea</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Base de Datos SQLite y Descarga -->
+        <div class="m-section-box">
+          <div class="m-box-title">💾 Base de Datos Persistente</div>
+          <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;">
+            Total recolectado: <strong id="m-db-count" style="color: #34d399;">...</strong>
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <a href="/api/export/csv" download="sismos_historico.csv" class="btn btn-outline" style="flex: 1; text-decoration: none; justify-content: center; font-size: 0.75rem; padding: 6px;">
+              📥 Exportar CSV
+            </a>
+            <a href="/api/export/json" download="sismos_historico.json" class="btn btn-outline" style="flex: 1; text-decoration: none; justify-content: center; font-size: 0.75rem; padding: 6px;">
+              📥 Exportar JSON
+            </a>
+          </div>
+        </div>
+
+        <!-- Acciones Rápidas -->
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+          <button id="m-btn-refresh" class="btn" style="flex: 1; background: #2563eb; justify-content: center; font-size: 0.75rem; padding: 10px;">
+            🔄 Forzar Refresco Ahora
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal de Configuración de Ingestión -->
   <div id="settings-modal" class="modal-backdrop">
     <div class="modal-card">
@@ -362,6 +464,32 @@
       </form>
     </div>
   </div>
+
+  <!-- 🌟 LIQUID GLASS NAVIGATION BAR (Estilo liquid_glass_bar para Móvil / PWA) -->
+  <nav id="liquid-glass-bar" class="liquid-glass-bar" aria-label="Navegación Móvil">
+    <div class="liquid-glass-pill-tracker" id="nav-pill-tracker"></div>
+    <button class="nav-tab active" data-tab="map" id="tab-map" title="Mapa Sísmico">
+      <span class="nav-icon">🗺️</span>
+      <span class="nav-label">Mapa</span>
+    </button>
+    <button class="nav-tab" data-tab="feed" id="tab-feed" title="Lista de Sismos">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Feed</span>
+      <span class="nav-badge" id="nav-feed-badge" style="display:none;"></span>
+    </button>
+    <button class="nav-tab" data-tab="waves" id="tab-waves" title="Impacto y Ondas P/S">
+      <span class="nav-icon">⚡</span>
+      <span class="nav-label">Ondas</span>
+    </button>
+    <button class="nav-tab" data-tab="stats" id="tab-stats" title="Métricas y Estado">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Métricas</span>
+    </button>
+    <button class="nav-tab" data-tab="settings" id="tab-settings" title="Configuración">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Ajustes</span>
+    </button>
+  </nav>
 
   <!-- Módulos de la Aplicación -->
   <script type="module" src="/js/app.js"></script>

@@ -1,0 +1,57 @@
+{
+  "name": "DETECCION-SISMO — Alerta Sísmica en Vivo",
+  "short_name": "Sismo Alerta",
+  "description": "Monitoreo, correlación y alerta sísmica en tiempo real con SGC (Colombia), USGS y EMSC.",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0f19",
+  "theme_color": "#131b2e",
+  "lang": "es-CO",
+  "dir": "ltr",
+  "categories": ["news", "utilities", "weather"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Sismos Colombia",
+      "short_name": "Colombia",
+      "description": "Ver sismos recientes en territorio colombiano",
+      "url": "/?country=colombia",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Sismos Globales",
+      "short_name": "Global",
+      "description": "Monitoreo global de eventos sísmicos",
+      "url": "/?country=all",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -182,6 +182,10 @@ Para garantizar 60 FPS estables y cero retrasos visuales con cientos de eventos 
    * Un único listener en el contenedor padre gestiona los clics de toda la lista de actividad reciente.
 7. **Persistencia de Preferencias en `localStorage`:**
    * El estilo de mapa seleccionado (Oscuro, Satélite, Claro, Calles), el estado del audio y los intervalos de sondeo se preservan entre recargas.
+8. **Arquitectura PWA y Liquid Glass Navigation Bar (Móvil):**
+   * **Manifiesto y Service Worker:** `manifest.json` y `sw.js` para instalación como app nativa independiente (*standalone*), caché offline *stale-while-revalidate* y soporte de Web Push.
+   * **Liquid Glass Navigation Bar:** Barra de navegación flotante con *backdrop-filter: blur(28px) saturate(190%)*, píldora indicadora activa deslizante con aceleración *spring cubic-bezier*, reflejos especulares de cristal y respuesta háptica táctil (`navigator.vibrate`).
+   * **Bottom Sheets Modales:** Navegación en móvil optimizada con hojas inferiores deslizables para Feed, Ondas/ETA, Métricas 24h y Ajustes, manteniendo el mapa en pantalla completa debajo.
 
 ---
 

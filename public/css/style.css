@@ -1,5 +1,5 @@
 /* public/css/style.css */
-/* Sistema de diseño moderno para DETECCION-SISMO - Interfaz flotante con alto contraste */
+/* Sistema de diseño moderno para DETECCION-SISMO - Interfaz Flotante, PWA y Liquid Glass Bar */
 
 :root {
   --bg: #0b0f19;
@@ -10,7 +10,7 @@
   --border-focus: #3b82f6;
   
   --accent: #3b82f6;
-  --accent-glow: rgba(59, 130, 246, 0.3);
+  --accent-glow: rgba(59, 130, 246, 0.35);
   --text: #f1f5f9;
   --text-muted: #94a3b8;
   --text-dim: #64748b;
@@ -24,30 +24,51 @@
   --emsc-color: #f97316;
   --multi-color: #a855f7;
 
-  --fuente: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --fuente-mono: "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+  --fuente: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --fuente-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", Consolas, monospace;
   
   --aire: 10px;
   --curva: 12px;
   --sombra: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1);
+  --glass-bar-h: 62px;
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
-body {
+html, body {
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: var(--fuente);
-  height: 100dvh;
+}
+
+body {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   padding: var(--aire);
   gap: var(--aire);
+  position: relative;
+}
+
+/* ── Utilidades Responsivas ────────────────────────────────────────────── */
+.desktop-only {
+  display: flex;
+}
+
+.mobile-only {
+  display: none;
+}
+
+.header-mobile-quick {
+  display: none;
 }
 
 /* ── Paneles Flotantes ─────────────────────────────────────────────────── */
@@ -57,6 +78,7 @@ body {
   border-radius: var(--curva);
   box-shadow: var(--sombra);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   position: relative;
 }
 
@@ -76,16 +98,15 @@ header {
   gap: 10px;
 }
 
-.logo-icon {
+.logo-icon, .logo-icon-img {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, #ef4444, #3b82f6);
   border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
   box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+  object-fit: cover;
 }
 
 .logo-text h1 {
@@ -157,11 +178,16 @@ header {
   align-items: center;
   gap: 6px;
   transition: all 0.2s ease;
+  user-select: none;
 }
 
 .btn:hover {
   background: #2563eb;
   transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: scale(0.98);
 }
 
 .btn-outline {
@@ -173,14 +199,6 @@ header {
 .btn-outline:hover {
   background: var(--surface-hover);
   border-color: var(--border-focus);
-}
-
-.btn-danger {
-  background: #ef4444;
-}
-
-.btn-danger:hover {
-  background: #dc2626;
 }
 
 /* ── Layout Principal ──────────────────────────────────────────────────── */
@@ -200,6 +218,10 @@ header {
   overflow: hidden;
   flex-shrink: 0;
   z-index: 50;
+}
+
+.sheet-drag-handle-bar {
+  display: none;
 }
 
 .sidebar-section {
@@ -286,6 +308,7 @@ header {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .feed-item {
@@ -304,6 +327,10 @@ header {
   background: var(--surface-hover);
   border-color: var(--border-focus);
   transform: translateX(2px);
+}
+
+.feed-item:active {
+  transform: scale(0.99);
 }
 
 .feed-item.selected {
@@ -435,6 +462,7 @@ header {
 .map-control-card {
   background: rgba(19, 27, 46, 0.88);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 12px;
@@ -483,14 +511,15 @@ header {
   bottom: 14px;
   left: 14px;
   z-index: 1000;
-  width: 320px;
+  width: 340px;
   background: rgba(19, 27, 46, 0.94);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px;
   box-shadow: var(--sombra);
-  display: none; /* Visible cuando hay un sismo activo/seleccionado */
+  display: none;
   animation: slideUp 0.3s ease;
 }
 
@@ -516,11 +545,22 @@ header {
 }
 
 .wave-close {
-  background: transparent;
+  background: rgba(255,255,255,0.08);
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wave-close:hover {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
 }
 
 .wave-stats-row {
@@ -578,7 +618,7 @@ header {
   font-weight: 700;
 }
 
-/* ── Modal de Simulación ───────────────────────────────────────────────── */
+/* ── Modales ───────────────────────────────────────────────────────────── */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -586,7 +626,8 @@ header {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 9999;
   display: none;
   align-items: center;
@@ -595,12 +636,12 @@ header {
 
 .modal-card {
   width: 440px;
-  max-width: 90vw;
+  max-width: 92vw;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--curva);
   padding: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.85);
 }
 
 .modal-header {
@@ -644,7 +685,194 @@ header {
   margin-top: 16px;
 }
 
-/* ── Animaciones de Ondas en Leaflet ───────────────────────────────────── */
+/* ── Modal Móvil de Métricas y Estado ─────────────────────────────────── */
+.stats-modal-card {
+  width: 460px;
+  max-width: 94vw;
+}
+
+.stats-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stats-grid-mobile {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stat-card-m {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-card-m .stat-lbl {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.stat-card-m .stat-val {
+  font-size: 1.15rem;
+  font-family: var(--fuente-mono);
+  font-weight: 800;
+}
+
+.m-section-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.m-box-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.m-services-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.72rem;
+}
+
+.service-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.status-ok {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* ── 🌟 LIQUID GLASS NAVIGATION BAR (Estilo Liquid Glass Bar) ───────────── */
+.liquid-glass-bar {
+  display: none; /* Oculto en PC por defecto */
+  position: fixed;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  
+  /* Efecto de cristal líquido de alta gama */
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(28px) saturate(190%) contrast(105%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%) contrast(105%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 36px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 
+              inset 0 1px 1px rgba(255, 255, 255, 0.35),
+              0 0 1px rgba(255, 255, 255, 0.2);
+  
+  padding: 5px 6px;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  max-width: calc(100vw - 28px);
+}
+
+/* Píldora activa deslizante (Tracker) */
+.liquid-glass-pill-tracker {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 6px;
+  width: 58px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.32), rgba(16, 185, 129, 0.22));
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.25s ease;
+  z-index: 1;
+}
+
+.nav-tab {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  min-width: 58px;
+  color: var(--text-dim);
+  border-radius: 30px;
+  transition: color 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.nav-tab:active {
+  transform: scale(0.92);
+}
+
+.nav-icon {
+  font-size: 1.15rem;
+  display: inline-block;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 1px;
+  transition: color 0.2s ease;
+}
+
+.nav-tab.active {
+  color: #fff;
+}
+
+.nav-tab.active .nav-icon {
+  transform: translateY(-2px) scale(1.18);
+  filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.8));
+}
+
+.nav-tab.active .nav-label {
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+/* Badge de notificación en tab */
+.nav-badge {
+  position: absolute;
+  top: 4px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ef4444;
+  border: 1px solid #131b2e;
+}
+
+/* ── Popups Leaflet ────────────────────────────────────────────────────── */
 .leaflet-container {
   background: #0b0f19 !important;
 }
@@ -729,23 +957,198 @@ header {
   background: var(--border-focus);
 }
 
-/* Responsive */
+/* ── 📱 ADAPTACIÓN RESPONSIVA MÓVIL Y PWA (<= 900px) ──────────────────── */
 @media (max-width: 900px) {
   body {
-    padding: 6px;
+    padding: 0;
+    gap: 0;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+  }
+
+  /* Header Móvil Ultra Limpio */
+  header {
+    border-radius: 0;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    padding: 8px 12px;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    gap: 8px;
+    background: rgba(11, 15, 25, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .logo-icon, .logo-icon-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+  }
+
+  .logo-text h1 {
+    font-size: 0.95rem;
+  }
+
+  .logo-text p {
+    display: none;
+  }
+
+  .header-stats {
+    display: none; /* Reemplazado por tab de estadísticas y quick chip */
+  }
+
+  .header-mobile-quick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .m-header-chip {
+    font-size: 0.72rem;
+    font-family: var(--fuente-mono);
+    font-weight: 700;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 12px;
+    color: #f87171;
+  }
+
+  .m-icon-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  /* Contenedor Principal: Mapa a Pantalla Completa */
+  .main-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .map-wrapper {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+  }
+
+  .map-overlay-top-right {
+    top: 8px;
+    right: 8px;
     gap: 6px;
   }
-  .main-container {
-    flex-direction: column;
+
+  .map-control-card {
+    padding: 6px 10px;
+    font-size: 0.68rem;
   }
+
+  /* Sidebar convertido en Bottom Sheet deslizable */
   .sidebar {
-    width: 100%;
-    height: 40vh;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 82vh;
+    max-height: 84vh;
+    background: rgba(19, 27, 46, 0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 24px 24px 0 0;
+    z-index: 1100;
+    transform: translateY(115%);
+    transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+    padding-bottom: calc(var(--glass-bar-h) + 16px + env(safe-area-inset-bottom, 0px));
   }
-  .map-wrapper {
-    height: 55vh;
+
+  .sidebar.sheet-open {
+    transform: translateY(0);
   }
+
+  .sheet-drag-handle-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 8px;
+  }
+
+  .sheet-drag-handle {
+    width: 38px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 3px;
+    margin-bottom: 4px;
+  }
+
+  .sheet-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+
+  /* Panel de Ondas en Móvil convertido en Bottom Sheet */
   .wave-eta-panel {
-    width: calc(100% - 28px);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100% !important;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: rgba(19, 27, 46, 0.97);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 24px 24px 0 0;
+    z-index: 1150;
+    transform: translateY(115%);
+    transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+    padding: 12px 14px;
+    padding-bottom: calc(var(--glass-bar-h) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .wave-eta-panel.sheet-open {
+    transform: translateY(0);
+    display: block;
+  }
+
+  /* Activar barra Liquid Glass en Móvil */
+  .liquid-glass-bar {
+    display: flex;
   }
 }

@@ -1,5 +1,5 @@
 // public/js/app.js
-// Controlador principal de la aplicación DETECCION-SISMO
+// Controlador principal de la aplicación DETECCION-SISMO (PWA + Desktop + Liquid Glass Bar)
 
 import { SeismicMap } from './map.js';
 import { SeismicAudioSynthesizer } from './audio.js';
@@ -10,6 +10,8 @@ class SismoApp {
   constructor() {
     this.events = [];
     this.selectedEvent = null;
+    this.currentTab = 'map';
+    this.feedLimit = 40;
     this.filters = {
       country: 'colombia', // Default Colombia
       minMag: 0,
@@ -23,19 +25,24 @@ class SismoApp {
     this.map = null;
     this.waveSim = null;
     this.timeline = null;
+    this.latestStats = null;
 
     this.init();
   }
 
   async init() {
-    // 1. Configurar listeners de la UI PRIMERO para que todos los botones respondan de inmediato
+    // 1. Registrar Service Worker para PWA
+    this.registerPWA();
+
+    // 2. Configurar listeners de la UI PRIMERO
     try {
       this.setupUIListeners();
+      this.setupLiquidGlassNav();
     } catch (e) {
       console.error('Error configurando listeners de UI:', e);
     }
 
-    // 2. Inicializar mapa Leaflet
+    // 3. Inicializar mapa Leaflet
     try {
       this.map = new SeismicMap(
         'map',
@@ -46,14 +53,14 @@ class SismoApp {
       console.error('Error inicializando mapa:', e);
     }
 
-    // 3. Inicializar simulador de ondas
+    // 4. Inicializar simulador de ondas
     try {
       if (this.map?.map) {
         this.waveSim = new SeismicWaveSimulator(this.map.map);
       }
     } catch (e) {}
 
-    // 4. Inicializar línea de tiempo
+    // 5. Inicializar línea de tiempo
     try {
       this.timeline = new SeismicTimelineController((hours) => {
         this.filters.hours = hours;
@@ -61,14 +68,14 @@ class SismoApp {
       });
     } catch (e) {}
 
-    // 5. Escuchar evento custom de popup para áreas de impacto y ondas
+    // 6. Escuchar evento custom de popup para áreas de impacto y ondas
     window.addEventListener('simulate_sismo_wave', (e) => {
       if (e.detail) {
         this.startWaveSimulation(e.detail);
       }
     });
 
-    // 6. Cargar caché local válido (si existe)
+    // 7. Cargar caché local válido (si existe)
     try {
       const cached = localStorage.getItem('sismo_events_cache');
       if (cached) {
@@ -80,14 +87,24 @@ class SismoApp {
       }
     } catch (e) {}
 
-    // 7. Carga rápida REST en segundo plano
+    // 8. Carga rápida REST en segundo plano
     this.fastInitialLoad();
 
-    // 8. Conectar WebSockets con Socket.io
+    // 9. Conectar WebSockets con Socket.io
     this.connectSocket();
 
-    // 9. Sincronización periódica de métricas de base de datos cada 10s
+    // 10. Sincronización periódica de métricas de base de datos cada 10s
     setInterval(() => this.fetchStats(), 10000);
+  }
+
+  registerPWA() {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('📱 [PWA] Service Worker activo:', reg.scope))
+          .catch((err) => console.warn('⚠️ [PWA] Error en Service Worker:', err));
+      });
+    }
   }
 
   async fastInitialLoad() {
@@ -98,6 +115,7 @@ class SismoApp {
       ]);
 
       if (statsRes) {
+        this.latestStats = statsRes;
         this.updateStats(statsRes);
       }
 
@@ -118,13 +136,17 @@ class SismoApp {
 
     this.socket.on('connect', () => {
       console.log('⚡ Conectado al servidor DETECCION-SISMO en tiempo real.');
-      const statusIndicator = document.getElementById('live-status-dot');
-      if (statusIndicator) statusIndicator.style.background = '#10b981';
+      const statusDot = document.getElementById('live-status-dot');
+      const statusDotM = document.getElementById('live-status-dot-m');
+      if (statusDot) statusDot.style.background = '#10b981';
+      if (statusDotM) statusDotM.style.background = '#10b981';
     });
 
     this.socket.on('disconnect', () => {
-      const statusIndicator = document.getElementById('live-status-dot');
-      if (statusIndicator) statusIndicator.style.background = '#ef4444';
+      const statusDot = document.getElementById('live-status-dot');
+      const statusDotM = document.getElementById('live-status-dot-m');
+      if (statusDot) statusDot.style.background = '#ef4444';
+      if (statusDotM) statusDotM.style.background = '#ef4444';
     });
 
     // Recibir datos iniciales
@@ -137,30 +159,39 @@ class SismoApp {
         this.applyFiltersAndRender();
       }
       if (data.stats) {
+        this.latestStats = data.stats;
         this.updateStats(data.stats);
       }
     });
 
-    // Desbloquear AudioContext en el primer clic del usuario en cualquier parte de la ventana
+    // Desbloquear AudioContext en el primer clic del usuario
     const unlockAudio = () => {
       this.audio.initContext();
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
     };
     window.addEventListener('click', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
 
-    // Evento en vivo de nuevo sismo (Sin animaciones invasivas ni repaneo involuntario)
+    // Evento en vivo de nuevo sismo
     this.socket.on('sismo_nuevo', (newEvent) => {
       console.log(`🔔 [NUEVO SISMO EN VIVO] M${newEvent.magnitude} - ${newEvent.place}`);
       
       // 1. Reproducir sonido acústico si está activado
       this.audio.playAlert(newEvent.magnitude);
 
-      // 2. Notificación nativa de escritorio
+      // 2. Notificación nativa
       this.showDesktopNotification(newEvent);
 
-      // 3. Insertar al inicio del listado y mapa sin mover la cámara del usuario
+      // 3. Mostrar badge en Feed tab si no estamos en feed
+      if (this.currentTab !== 'feed') {
+        const badge = document.getElementById('nav-feed-badge');
+        if (badge) badge.style.display = 'block';
+      }
+
+      // 4. Insertar al inicio del listado y mapa
       this.events = [newEvent, ...this.events.filter((e) => e.id !== newEvent.id)];
 
       this.applyFiltersAndRender();
@@ -178,6 +209,7 @@ class SismoApp {
     try {
       const res = await fetch('/api/stats');
       const stats = await res.json();
+      this.latestStats = stats;
       this.updateStats(stats);
     } catch (e) {
       console.warn('Error al actualizar stats:', e);
@@ -192,14 +224,40 @@ class SismoApp {
     const multiCount = document.getElementById('stat-multisource');
     const dbTotal = document.getElementById('db-total-records');
 
+    const mTotal = document.getElementById('m-stat-total');
+    const mCol = document.getElementById('m-stat-colombia');
+    const mStrong = document.getElementById('m-stat-strongest');
+    const mMulti = document.getElementById('m-stat-multi');
+    const mDb = document.getElementById('m-db-count');
+    const mHeaderStrongest = document.getElementById('m-header-strongest');
+
+    const strongestStr = stats.strongest24h ? `M${stats.strongest24h.magnitude}` : '—';
+
     if (total24h) total24h.textContent = stats.totalLast24h || 0;
     if (col24h) col24h.textContent = stats.totalColombia24h || 0;
-    if (strong24h) {
-      strong24h.textContent = stats.strongest24h ? `M${stats.strongest24h.magnitude}` : '—';
-    }
+    if (strong24h) strong24h.textContent = strongestStr;
     if (multiCount) multiCount.textContent = stats.multiSourceCount || 0;
     if (dbTotal && stats.database) {
       dbTotal.textContent = `${stats.database.totalRecords || 0} guardados`;
+    }
+
+    // Actualizar campos móviles
+    if (mTotal) mTotal.textContent = stats.totalLast24h || 0;
+    if (mCol) mCol.textContent = stats.totalColombia24h || 0;
+    if (mStrong) mStrong.textContent = strongestStr;
+    if (mMulti) mMulti.textContent = stats.multiSourceCount || 0;
+    if (mDb && stats.database) mDb.textContent = `${stats.database.totalRecords || 0} registros`;
+    if (mHeaderStrongest) mHeaderStrongest.textContent = strongestStr !== '—' ? `Max ${strongestStr}` : 'Sin sismos hoy';
+
+    // Estados de servicios
+    if (stats.services) {
+      const sgcTag = document.getElementById('m-status-sgc');
+      const usgsTag = document.getElementById('m-status-usgs');
+      const emscTag = document.getElementById('m-status-emsc');
+
+      if (sgcTag) sgcTag.textContent = stats.services.sgc?.status === 'ok' ? 'En Línea' : 'Reconectando';
+      if (usgsTag) usgsTag.textContent = stats.services.usgs?.status === 'ok' ? 'En Línea' : 'Reconectando';
+      if (emscTag) emscTag.textContent = stats.services.emsc?.status === 'ok' ? 'En Línea' : 'Reconectando';
     }
   }
 
@@ -328,6 +386,10 @@ class SismoApp {
         const ev = this.events.find((x) => x.id === id);
         if (ev) {
           this.selectEvent(ev);
+          // En móvil, si se seleccionó desde el feed, cerrar feed sheet para ver mapa
+          if (window.innerWidth <= 900) {
+            this.switchTab('map');
+          }
         }
       });
       this._feedListenerAttached = true;
@@ -347,6 +409,154 @@ class SismoApp {
   startWaveSimulation(ev) {
     this.selectEvent(ev);
     this.waveSim.start(ev);
+
+    // En móvil, abrir automáticamente la hoja de ondas
+    if (window.innerWidth <= 900) {
+      this.switchTab('waves');
+    }
+  }
+
+  // 🌟 Liquid Glass Navigation Bar & Mobile Sheet Switcher
+  setupLiquidGlassNav() {
+    const tabs = document.querySelectorAll('.liquid-glass-bar .nav-tab');
+    const tracker = document.getElementById('nav-pill-tracker');
+
+    const updateTracker = (targetTab) => {
+      if (!tracker || !targetTab) return;
+      const nav = document.querySelector('.liquid-glass-bar');
+      if (!nav) return;
+
+      const navRect = nav.getBoundingClientRect();
+      const tabRect = targetTab.getBoundingClientRect();
+      const offsetLeft = tabRect.left - navRect.left;
+
+      tracker.style.transform = `translateX(${offsetLeft - 6}px)`;
+      tracker.style.width = `${tabRect.width}px`;
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const tabId = tab.getAttribute('data-tab');
+        this.triggerHaptic();
+        this.switchTab(tabId);
+      });
+    });
+
+    // Posición inicial del tracker
+    setTimeout(() => {
+      const activeTab = document.querySelector('.liquid-glass-bar .nav-tab.active');
+      if (activeTab) updateTracker(activeTab);
+    }, 150);
+
+    window.addEventListener('resize', () => {
+      const activeTab = document.querySelector('.liquid-glass-bar .nav-tab.active');
+      if (activeTab) updateTracker(activeTab);
+    });
+
+    // Listeners de botones de cierre en sheets móviles
+    const closeFeedBtn = document.getElementById('btn-close-feed-sheet');
+    if (closeFeedBtn) {
+      closeFeedBtn.addEventListener('click', () => this.switchTab('map'));
+    }
+
+    const closeStatsBtn = document.getElementById('btn-close-stats-sheet');
+    if (closeStatsBtn) {
+      closeStatsBtn.addEventListener('click', () => this.switchTab('map'));
+    }
+  }
+
+  switchTab(tabId) {
+    this.currentTab = tabId;
+
+    // 1. Actualizar clases del navbar
+    const tabs = document.querySelectorAll('.liquid-glass-bar .nav-tab');
+    tabs.forEach((t) => {
+      const isActive = t.getAttribute('data-tab') === tabId;
+      t.classList.toggle('active', isActive);
+      if (isActive) {
+        const tracker = document.getElementById('nav-pill-tracker');
+        const nav = document.querySelector('.liquid-glass-bar');
+        if (tracker && nav) {
+          const navRect = nav.getBoundingClientRect();
+          const tabRect = t.getBoundingClientRect();
+          tracker.style.transform = `translateX(${tabRect.left - navRect.left - 6}px)`;
+          tracker.style.width = `${tabRect.width}px`;
+        }
+      }
+    });
+
+    const sidebar = document.getElementById('app-sidebar');
+    const wavePanel = document.getElementById('wave-eta-panel');
+    const statsModal = document.getElementById('stats-sheet-modal');
+    const settingsModal = document.getElementById('settings-modal');
+
+    // 2. Gestionar vistas según el tab
+    if (tabId === 'map') {
+      if (sidebar) sidebar.classList.remove('sheet-open');
+      if (wavePanel) wavePanel.classList.remove('sheet-open');
+      if (statsModal) statsModal.style.display = 'none';
+      if (settingsModal) settingsModal.style.display = 'none';
+      setTimeout(() => this.map?.map?.invalidateSize(), 200);
+    } else if (tabId === 'feed') {
+      if (sidebar) sidebar.classList.add('sheet-open');
+      if (wavePanel) wavePanel.classList.remove('sheet-open');
+      if (statsModal) statsModal.style.display = 'none';
+      if (settingsModal) settingsModal.style.display = 'none';
+
+      // Limpiar badge de feed
+      const badge = document.getElementById('nav-feed-badge');
+      if (badge) badge.style.display = 'none';
+    } else if (tabId === 'waves') {
+      if (sidebar) sidebar.classList.remove('sheet-open');
+      if (statsModal) statsModal.style.display = 'none';
+      if (settingsModal) settingsModal.style.display = 'none';
+
+      // Si no hay sismo seleccionado, simular el más reciente
+      if (!this.selectedEvent && this.events.length > 0) {
+        this.startWaveSimulation(this.events[0]);
+      } else {
+        if (wavePanel) {
+          wavePanel.style.display = 'block';
+          wavePanel.classList.add('sheet-open');
+        }
+      }
+    } else if (tabId === 'stats') {
+      if (sidebar) sidebar.classList.remove('sheet-open');
+      if (wavePanel) wavePanel.classList.remove('sheet-open');
+      if (settingsModal) settingsModal.style.display = 'none';
+      if (statsModal) {
+        this.updateStats(this.latestStats);
+        statsModal.style.display = 'flex';
+      }
+    } else if (tabId === 'settings') {
+      if (sidebar) sidebar.classList.remove('sheet-open');
+      if (wavePanel) wavePanel.classList.remove('sheet-open');
+      if (statsModal) statsModal.style.display = 'none';
+      if (settingsModal) {
+        // Cargar valores actuales de localStorage
+        const sgcVal = localStorage.getItem('sismo_sgc_interval') || '30';
+        const usgsVal = localStorage.getItem('sismo_usgs_interval') || '30';
+        const minSound = localStorage.getItem('sismo_min_sound') || '3.5';
+
+        const sgcSelect = document.getElementById('setting-sgc-interval');
+        const usgsSelect = document.getElementById('setting-usgs-interval');
+        const soundSelect = document.getElementById('setting-min-sound');
+
+        if (sgcSelect) sgcSelect.value = sgcVal;
+        if (usgsSelect) usgsSelect.value = usgsVal;
+        if (soundSelect) soundSelect.value = minSound;
+
+        settingsModal.style.display = 'flex';
+      }
+    }
+  }
+
+  triggerHaptic() {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(12);
+      } catch (e) {}
+    }
   }
 
   setupUIListeners() {
@@ -407,42 +617,67 @@ class SismoApp {
       });
     }
 
-    // Botón de sonido
+    // Botones de sonido (Desktop y Móvil)
     const audioBtn = document.getElementById('btn-sound-toggle');
-    if (audioBtn) {
-      audioBtn.addEventListener('click', () => {
-        const enabled = this.audio.toggle();
-        audioBtn.innerHTML = enabled ? '🔊 Alertas: ON' : '🔇 Alertas: OFF';
+    const audioBtnM = document.getElementById('btn-sound-toggle-m');
+
+    const handleSoundToggle = () => {
+      this.triggerHaptic();
+      const enabled = this.audio.toggle();
+      if (audioBtn) {
+        audioBtn.innerHTML = enabled ? '🔊 Sonido: ON' : '🔇 Sonido: OFF';
         audioBtn.classList.toggle('btn-outline', !enabled);
-      });
-    }
+      }
+      if (audioBtnM) {
+        audioBtnM.innerHTML = enabled ? '🔊' : '🔇';
+        audioBtnM.style.background = enabled ? 'rgba(59, 130, 246, 0.3)' : 'var(--surface2)';
+      }
+    };
+
+    if (audioBtn) audioBtn.addEventListener('click', handleSoundToggle);
+    if (audioBtnM) audioBtnM.addEventListener('click', handleSoundToggle);
 
     // Cerrar panel de simulación de ondas
     const closeWaveBtn = document.getElementById('btn-close-wave');
     if (closeWaveBtn) {
       closeWaveBtn.addEventListener('click', () => {
         this.waveSim.stop();
-        document.getElementById('wave-eta-panel').style.display = 'none';
-      });
-    }
-
-    // Botón de Refresco Manual
-    const refreshBtn = document.getElementById('btn-refresh');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', async () => {
-        refreshBtn.innerHTML = '⏳ Actualizando...';
-        refreshBtn.style.opacity = '0.7';
-        try {
-          await fetch('/api/refresh', { method: 'POST' });
-          await this.fastInitialLoad();
-        } catch (e) {
-          console.warn('Error en refresco:', e);
-        } finally {
-          refreshBtn.innerHTML = '🔄 Actualizar';
-          refreshBtn.style.opacity = '1';
+        const wavePanel = document.getElementById('wave-eta-panel');
+        if (wavePanel) {
+          wavePanel.style.display = 'none';
+          wavePanel.classList.remove('sheet-open');
+        }
+        if (window.innerWidth <= 900) {
+          this.switchTab('map');
         }
       });
     }
+
+    // Botones de Refresco Manual
+    const refreshBtn = document.getElementById('btn-refresh');
+    const mRefreshBtn = document.getElementById('m-btn-refresh');
+
+    const handleRefresh = async (btn) => {
+      this.triggerHaptic();
+      if (btn) {
+        btn.innerHTML = '⏳ Actualizando...';
+        btn.style.opacity = '0.7';
+      }
+      try {
+        await fetch('/api/refresh', { method: 'POST' });
+        await this.fastInitialLoad();
+      } catch (e) {
+        console.warn('Error en refresco:', e);
+      } finally {
+        if (btn) {
+          btn.innerHTML = btn.id === 'm-btn-refresh' ? '🔄 Forzar Refresco Ahora' : '🔄 Actualizar';
+          btn.style.opacity = '1';
+        }
+      }
+    };
+
+    if (refreshBtn) refreshBtn.addEventListener('click', () => handleRefresh(refreshBtn));
+    if (mRefreshBtn) mRefreshBtn.addEventListener('click', () => handleRefresh(mRefreshBtn));
 
     // Modal de Ajustes
     const settingsBtn = document.getElementById('btn-settings');
@@ -453,25 +688,15 @@ class SismoApp {
 
     if (settingsBtn && settingsModal) {
       settingsBtn.addEventListener('click', () => {
-        // Cargar valores actuales de localStorage
-        const sgcVal = localStorage.getItem('sismo_sgc_interval') || '30';
-        const usgsVal = localStorage.getItem('sismo_usgs_interval') || '30';
-        const minSound = localStorage.getItem('sismo_min_sound') || '3.5';
-
-        const sgcSelect = document.getElementById('setting-sgc-interval');
-        const usgsSelect = document.getElementById('setting-usgs-interval');
-        const soundSelect = document.getElementById('setting-min-sound');
-
-        if (sgcSelect) sgcSelect.value = sgcVal;
-        if (usgsSelect) usgsSelect.value = usgsVal;
-        if (soundSelect) soundSelect.value = minSound;
-
-        settingsModal.style.display = 'flex';
+        this.switchTab('settings');
       });
     }
 
     const hideSettings = () => {
       if (settingsModal) settingsModal.style.display = 'none';
+      if (window.innerWidth <= 900) {
+        this.switchTab('map');
+      }
     };
 
     if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', hideSettings);
@@ -512,8 +737,8 @@ class SismoApp {
           this.updateNotifButtonState(notifBtn);
           if (perm === 'granted') {
             new Notification('🌍 DETECCION-SISMO', {
-              body: '¡Notificaciones de escritorio activadas con éxito! Recibirás alertas inmediatas de sismos.',
-              icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🌍</text></svg>'
+              body: '¡Notificaciones activadas con éxito! Recibirás alertas inmediatas de sismos.',
+              icon: '/icons/icon-192.png'
             });
           }
         }
@@ -542,7 +767,6 @@ class SismoApp {
   showDesktopNotification(event) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-    // Solo notificar si la magnitud es relevante o es en Colombia
     const title = `🚨 SISMO M${event.magnitude} — ${event.place}`;
     const body = `Profundidad: ${event.depth} km (${event.depthCategory?.category})\nIntensidad: ${event.mmi?.label}\nRedes: ${event.sources.join(', ')}`;
 
@@ -550,7 +774,7 @@ class SismoApp {
       body,
       tag: event.id,
       renotify: true,
-      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🌍</text></svg>'
+      icon: '/icons/icon-192.png'
     });
 
     notif.onclick = () => {
@@ -561,7 +785,7 @@ class SismoApp {
   }
 }
 
-// Iniciar aplicación asegurando ejecución inmediata incluso si DOMContentLoaded ya disparó
+// Iniciar aplicación asegurando ejecución inmediata
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     window.app = new SismoApp();
