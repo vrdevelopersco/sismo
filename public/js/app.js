@@ -132,7 +132,12 @@ class SismoApp {
   }
 
   connectSocket() {
-    this.socket = io();
+    this.socket = io({
+      extraHeaders: {
+        'bypass-tunnel-reminder': 'true',
+        'Bypass-Tunnel-Reminder': 'true'
+      }
+    });
 
     this.socket.on('connect', () => {
       console.log('⚡ Conectado al servidor DETECCION-SISMO en tiempo real.');

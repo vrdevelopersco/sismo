@@ -15,10 +15,32 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   
+  <!-- Interceptor global para Bypass Tunnel Reminder (Localtunnel / Ngrok) -->
+  <script>
+    (function() {
+      const origFetch = window.fetch;
+      window.fetch = function(url, options = {}) {
+        options = options || {};
+        options.headers = options.headers || {};
+        if (options.headers instanceof Headers) {
+          options.headers.set('bypass-tunnel-reminder', 'true');
+          options.headers.set('Bypass-Tunnel-Reminder', 'true');
+        } else if (Array.isArray(options.headers)) {
+          options.headers.push(['bypass-tunnel-reminder', 'true']);
+          options.headers.push(['Bypass-Tunnel-Reminder', 'true']);
+        } else {
+          options.headers['bypass-tunnel-reminder'] = 'true';
+          options.headers['Bypass-Tunnel-Reminder'] = 'true';
+        }
+        return origFetch(url, options);
+      };
+    })();
+  </script>
+
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  
+
   <!-- Socket.io -->
   <script src="/socket.io/socket.io.js"></script>
 

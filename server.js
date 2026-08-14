@@ -29,6 +29,11 @@ const PORT = process.env.PORT || 3000;
 
 // Middlewares
 app.use(cors());
+app.use((req, res, next) => {
+  res.setHeader('bypass-tunnel-reminder', 'true');
+  res.setHeader('Bypass-Tunnel-Reminder', 'true');
+  next();
+});
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 

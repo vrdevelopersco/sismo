@@ -1,7 +1,7 @@
 // public/sw.js
-// Service Worker para DETECCION-SISMO PWA (Cache Offline + Web Push)
+// Service Worker para DETECCION-SISMO PWA (Cache Offline + Web Push + Bypass Tunnel Reminder)
 
-const CACHE_NAME = 'sismo-cache-v1.1';
+const CACHE_NAME = 'sismo-cache-v1.2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -21,6 +21,18 @@ const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap'
 ];
+
+// Helper para adjuntar bypass-tunnel-reminder
+function createBypassRequest(originalRequest) {
+  try {
+    const headers = new Headers(originalRequest.headers);
+    headers.set('bypass-tunnel-reminder', 'true');
+    headers.set('Bypass-Tunnel-Reminder', 'true');
+    return new Request(originalRequest, { headers });
+  } catch (e) {
+    return originalRequest;
+  }
+}
 
 // 1. Instalación: Cachear la app shell básica
 self.addEventListener('install', (event) => {
@@ -54,15 +66,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Ignorar WebSocket y llamadas POST/PUT
+  // Ignorar WebSocket y llamadas POST/PUT no cacheadas
   if (event.request.method !== 'GET' || url.pathname.startsWith('/socket.io/')) {
     return;
   }
 
-  // Rutas de API REST: Siempre red directa (Network-first)
+  const bypassReq = createBypassRequest(event.request);
+
+  // Rutas de API REST: Siempre red directa (Network-first) con bypass header
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(event.request).catch(() => {
+      fetch(bypassReq).catch(() => {
         return new Response(JSON.stringify({ error: 'offline', offline: true }), {
           headers: { 'Content-Type': 'application/json' }
         });
@@ -71,10 +85,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Assets estáticos y Tiles: Stale-While-Revalidate
+  // Assets estáticos y Tiles: Stale-While-Revalidate con bypass header
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
+      const fetchPromise = fetch(bypassReq)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
